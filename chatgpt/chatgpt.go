@@ -1,4 +1,4 @@
-package main
+package chatgpt
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/wittejm/punthreads/db"
 )
 
 type Message struct {
@@ -26,18 +28,15 @@ type ResponseBody struct {
 	Choices []Choice `json:"choices"`
 }
 
-func getGptResponse(threadText string) string {
+func GetGptResponse(threadText string) string {
 
-	localFetchResult, err := fetchThreadByText(threadText)
+	localFetchResult, err := db.GetThreadByText(threadText)
 	if err == nil {
 		fmt.Println("found existing response")
 		return localFetchResult.Response
 	}
 
 	fmt.Println("fetching from gpt")
-
-	// look for the existing mongo entry with this text.
-	// if it exists, return what's already there.
 
 	OPENAI_API_KEY := os.Getenv("OPENAI_API_KEY")
 

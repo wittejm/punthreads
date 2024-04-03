@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/wittejm/punthreads/scrape"
 )
 
 func main() {
@@ -21,7 +23,7 @@ func main() {
 	}
 
 	if command == "gather" {
-		GatherPosts(subreddit, "all")
+		scrape.GatherPosts(subreddit, "all")
 	} else if command == "rate" {
 		WalkPostsAndRate(subreddit)
 	}

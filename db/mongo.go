@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func getCollection() *mongo.Collection {
 
 }
 
-func writeThreadAndResult(entry Entry) {
+func WriteThreadAndResult(entry Entry) {
 	threadsCollection := getCollection()
 	_, err := threadsCollection.InsertOne(context.TODO(), bson.D{
 		{Key: "subreddit", Value: entry.Subreddit},
@@ -57,7 +57,7 @@ func writeThreadAndResult(entry Entry) {
 	}
 }
 
-func fetchThreadByText(threadText string) (Entry, error) {
+func GetThreadByText(threadText string) (Entry, error) {
 
 	threadsCollection := getCollection()
 

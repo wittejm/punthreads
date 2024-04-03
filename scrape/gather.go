@@ -1,7 +1,7 @@
 /*
 Get the subreddit page, then get all the posts in the result.
 */
-package main
+package scrape
 
 import (
 	//"bufio"
@@ -17,6 +17,25 @@ type Comment struct {
 	Score   int
 	Text    string
 	Replies []Comment
+}
+
+func (c Comment) ThreadLength() int {
+	if c.Replies == nil || len(c.Replies) == 0 {
+		return 1
+	} else {
+		return 1 + c.Replies[0].ThreadLength()
+	}
+}
+
+func (c Comment) ThreadToString() string {
+	var repliesString string
+	if c.Replies == nil || len(c.Replies) == 0 {
+		repliesString = ""
+	} else {
+		repliesString = c.Replies[0].ThreadToString()
+	}
+	result := fmt.Sprintf("%d %s \n%s", c.Score, c.Text, repliesString)
+	return result
 }
 
 func commentsContentToBareComments(commentContent CommentsContent) []Comment {
@@ -35,10 +54,10 @@ func commentsContentToBareComments(commentContent CommentsContent) []Comment {
 	return comments
 }
 
-func count(comments []Comment) int {
+func Count(comments []Comment) int {
 	i := 0
 	for _, c := range comments {
-		i += 1 + count(c.Replies)
+		i += 1 + Count(c.Replies)
 	}
 	return i
 }
@@ -46,7 +65,7 @@ func count(comments []Comment) int {
 func PrintComments(comments []Comment, indent int) {
 	for _, c := range comments {
 
-		fmt.Printf("%s %d %5d %s\n", strings.Repeat("  ", indent), c.threadLength(), c.Score, c.Text)
+		fmt.Printf("%s %d %5d %s\n", strings.Repeat("  ", indent), c.ThreadLength(), c.Score, c.Text)
 		PrintComments(c.Replies, indent+1)
 	}
 }

@@ -1,4 +1,4 @@
-module example.com/punthreads
+module github.com/wittejm/punthreads
 
 go 1.22.1
 
