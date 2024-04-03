@@ -138,7 +138,6 @@ func getBestShapedThread(comment Comment, minScore int) *Comment {
 	}
 
 	return &result
-
 }
 
 func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after string) SubredditContent {
@@ -178,7 +177,7 @@ func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 		res, err := client.Do(req)
 
 		check(err)
-		defer res.Body.Close() // Close the response body when we're done with it
+		defer res.Body.Close()
 
 		body, err := io.ReadAll(res.Body)
 		check(err)
@@ -195,11 +194,6 @@ func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 	var data SubredditContent
 	json.Unmarshal(body, &data)
 
-	fmt.Println("pretty print:")
-	var printabledata map[string]interface{}
-	jsonData, _ := json.Marshal(data)
-	json.Unmarshal(jsonData, &printabledata)
-	// PrintJSON(printabledata, 0)
 	return data
 }
 func LoadOrFetchPost(subreddit string, postId string, order string, offset int) PostAndCommentsContent {
@@ -241,10 +235,6 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int) 
 	return data
 }
 
-func PrintCommentsTree(comments CommentsData, indent int) {
-
-}
-
 func PrintJSON(data map[string]interface{}, indents int) {
 	for k, v := range data {
 		fmt.Println(strings.Repeat("  ", indents), "k:", k)
@@ -263,40 +253,11 @@ func PrintJSON(data map[string]interface{}, indents int) {
 	}
 }
 
-/*
-	func main2() {
-		/*
-			pageOneContent := LoadOrFetchSubreddit("funny", "", 0, "")
-			var titles []string
-			for i, p := range pageOneContent.Data.Children {
-				fmt.Println(i, p.Title)
-				titles = append(titles, p.Title)
-			}
-			lastPostId := pageOneContent.Data.Children[len(pageOneContent.Data.Children)-1].Name
-			pageTwoContent := LoadOrFetchSubreddit("funny", "", 1, lastPostId)
-			for i, p := range pageTwoContent.Data.Children {
-				fmt.Println(i, p.Title)
-				titles = append(titles, p.Title)
-			}
-		//
-		generator := PageGenerator("funny", "day")
-		//var titles []string
-		for i := 0; i < 5; i++ {
-			nextPage := generator()
-
-			for j, p := range nextPage.Data.Children {
-				fmt.Println(j, p.Title)
-			}
-		}
-
-}
-*/
 func PageGenerator(subreddit string, order string) func() SubredditContent {
 	lastPostId := ""
 	var nextPageContent SubredditContent
 	counter := 1
 	return func() SubredditContent {
-		//for { this doesn't need to loop.
 		nextPageContent = LoadOrFetchSubreddit(subreddit, order, counter, lastPostId)
 
 		if len(nextPageContent.Data.Children) == 0 {
@@ -306,6 +267,5 @@ func PageGenerator(subreddit string, order string) func() SubredditContent {
 		}
 		counter = counter + 1
 		return nextPageContent
-		//}
 	}
 }

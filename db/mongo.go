@@ -29,12 +29,6 @@ func getCollection() *mongo.Collection {
 		panic(err)
 	}
 
-	/*defer func() {
-		if err = client.Disconnect(context.TODO()); err != nil {
-			panic(err)
-		}
-	}()*/
-
 	db := client.Database("punthreads")
 	threadsCollection := db.Collection("punthreads")
 	return threadsCollection
@@ -79,22 +73,3 @@ func GetThreadByText(threadText string) (Entry, error) {
 
 	return results[0], nil
 }
-
-/*
-func main_mongo() {
-
-	//
-		entryExample1 := Entry{
-			Title:      "faketitle1",
-			PostId:     "0001",
-			ThreadText: "a thread text",
-			Response:   "a fake response",
-			Rating:     -1,
-		}
-		writeThreadAndResult(entryExample1)
-	//
-
-	fmt.Println(fetchThreadByText("a thread text"))
-
-}
-*/

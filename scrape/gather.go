@@ -149,22 +149,8 @@ func CommentsToBestCommentThreads(comments CommentsContent, minScore int) []Comm
 			continue
 		}
 
-		//scanner := bufio.NewScanner(os.Stdin)
-		//scanner.Scan()
-		// PrintComments(cleanedComments, 1)
-		// PrintComments(cleanedComments, 1)
 		resultCommentThreads = append(resultCommentThreads, *resultThread)
 	}
 
-	// PrintComments(resultCommentThreads, 1)
-
 	return resultCommentThreads
 }
-
-/*
-func main_gather() {
-	GatherPosts("holdmybeer", "all")
-	//getGptRating()
-
-}
-*/
