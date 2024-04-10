@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/wittejm/punthreads/chatgpt"
 	"github.com/wittejm/punthreads/db"
@@ -33,34 +32,42 @@ func WalkPostsAndRate(subreddit string) {
 		if post.Post.Data.Children == nil {
 			continue
 		}
-		title := post.Post.Data.Children[0].Data.Title
-		postId := post.Post.Data.Children[0].Data.Name[3:]
-		fmt.Println(post.Post.Data.Children[0].Data.Title, post.Post.Data.Children[0].Data.Name)
-		commentThreads := scrape.CommentsToBestCommentThreads(post.Comments, minScore)
-		for _, commentThread := range commentThreads {
-			scrape.PrintComments([]scrape.Comment{commentThread}, 1)
-			if commentThread.ThreadLength() > 5 {
+		time.Sleep(time.Millisecond * 200)
+		go WalkPostAndRate(subreddit, post, minScore)
+	}
+}
 
-				threadText := commentThread.ThreadToString()
+func WalkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minScore int) {
 
-				response := chatgpt.GetGptResponse(threadText)
-				rating := getRatingFromResponse(response)
-				entry := db.Entry{
-					Subreddit:  subreddit,
-					Title:      title,
-					PostId:     postId,
-					ThreadText: threadText,
-					Response:   response,
-					Rating:     rating,
-				}
+	title := post.Post.Data.Children[0].Data.Title
+	postId := post.Post.Data.Children[0].Data.Name[3:]
+	fmt.Println(post.Post.Data.Children[0].Data.Title, post.Post.Data.Children[0].Data.Name)
+	commentThreads := scrape.CommentsToBestCommentThreads(post.Comments, minScore)
+	for _, commentThread := range commentThreads {
+		scrape.PrintComments([]scrape.Comment{commentThread}, 1)
+		if commentThread.ThreadLength() > 5 {
 
-				fmt.Println(entry)
-				db.WriteThreadAndResult(entry)
+			threadText := commentThread.ThreadToString()
+
+			response := chatgpt.GetGptResponse(threadText)
+			rating := getRatingFromResponse(response)
+			entry := db.Entry{
+				Subreddit:  subreddit,
+				Title:      title,
+				PostId:     postId,
+				ThreadText: threadText,
+				Response:   response,
+				Rating:     rating,
+			}
+
+			fmt.Println(entry)
+			db.WriteThreadAndResult(entry)
+			/*
 				if rating >= 7 {
 					scanner := bufio.NewScanner(os.Stdin)
 					scanner.Scan()
 				}
-			}
+			*/
 		}
 	}
 }

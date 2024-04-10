@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/wittejm/punthreads/db"
 	"github.com/wittejm/punthreads/scrape"
 )
 
 func main() {
 
 	if len(os.Args) == 1 {
-		fmt.Println("commands: gather, rate")
+		fmt.Println("commands: all,gather, rate, clear, review")
 		return
 	}
 
@@ -23,8 +24,15 @@ func main() {
 	}
 
 	if command == "gather" {
-		scrape.GatherPosts(subreddit, "all")
+		postIds := scrape.GatherPostIds(subreddit, "all")
+		fmt.Println("len(postIds):", len(postIds))
+		scrape.ConcurrentlyFetchPosts("all", postIds)
+
 	} else if command == "rate" {
 		WalkPostsAndRate(subreddit)
+	} else if command == "clear" {
+		scrape.ClearBadFiles("all")
+	} else if command == "review" {
+		db.Review()
 	}
 }

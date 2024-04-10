@@ -56,7 +56,6 @@ func GetThreadByText(threadText string) (Entry, error) {
 	threadsCollection := getCollection()
 
 	filter := bson.D{{Key: "threadText", Value: threadText}}
-	// filter = bson.D{}
 
 	cursor, err := threadsCollection.Find(context.TODO(), filter, nil)
 	if err != nil {
@@ -72,4 +71,34 @@ func GetThreadByText(threadText string) (Entry, error) {
 	}
 
 	return results[0], nil
+}
+
+func GetThreads() []Entry {
+	threadsCollection := getCollection()
+
+	filter := bson.D{}
+
+	cursor, err := threadsCollection.Find(context.TODO(), filter, nil)
+	if err != nil {
+		panic(err)
+	}
+	var results []Entry
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		panic(err)
+	}
+	fmt.Println(results)
+
+	return results
+}
+
+func Review() {
+	entries := GetThreads()
+	i := 0
+	for _, e := range entries {
+		if e.Rating >= 8 {
+			i += 1
+			fmt.Println(i, ":", e.Rating, e.Subreddit, e.PostId, e.Title)
+			fmt.Println(e.ThreadText)
+		}
+	}
 }

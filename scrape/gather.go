@@ -11,6 +11,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 )
 
 type Comment struct {
@@ -76,6 +77,32 @@ func LocatePunThread(comments []Comment) []string {
 	return result
 }
 
+func GatherPostIds(subreddit string, period string) []string {
+	var allPostIds []string
+	generator := PageGenerator(subreddit, period)
+
+	for i := 0; i < 100; i++ {
+		subredditContent := generator()
+		if len(subredditContent.Data.Children) < 2 {
+			break
+		}
+		for _, c := range subredditContent.Data.Children[2:] {
+			postId := c.Name[3:]
+			allPostIds = append(allPostIds, postId)
+		}
+	}
+	return allPostIds
+}
+
+func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
+	postIds2 := postIds[576:]
+	for i, postId := range postIds2 {
+		fmt.Println("Fetching post:", i, postId)
+		time.Sleep(time.Millisecond * 100)
+		go LoadOrFetchPost(subreddit, postId, "", 0)
+	}
+}
+
 func GatherPosts(subreddit string, period string) []PostAndCommentsContent {
 	var allPostData []PostAndCommentsContent
 	generator := PageGenerator(subreddit, period)
@@ -86,20 +113,18 @@ func GatherPosts(subreddit string, period string) []PostAndCommentsContent {
 			postId := c.Name[3:]
 			postData := LoadOrFetchPost(subreddit, postId, "", 0)
 			allPostData = append(allPostData, postData)
-
 		}
 	}
 	return allPostData
 }
 
 func getPostFilenames() []string {
-	dataContents, err := os.ReadDir("../data")
+	dataContents, err := os.ReadDir("./data")
 	if err != nil {
 		panic(err)
 	}
 	var filenames []string
 
-	fmt.Println(dataContents)
 	for ind, item := range dataContents {
 		fmt.Printf("%d %T %s\n", ind, item, item)
 		var val = item.Name()
@@ -115,12 +140,10 @@ func GatherSavedPosts(subreddit string) []PostAndCommentsContent {
 		if strings.Contains(filename, fmt.Sprintf("r.%s", subreddit)) || !strings.Contains(filename, subreddit) {
 			continue
 		}
-		body, err := os.ReadFile(fmt.Sprintf("../data/%s", filename))
+		body, err := os.ReadFile(fmt.Sprintf("./data/%s", filename))
 		if err != nil {
 			panic(err)
 		}
-		//scanner := bufio.NewScanner(os.Stdin)
-		//scanner.Scan()
 		var data PostAndCommentsContent
 		json.Unmarshal(body, &data)
 

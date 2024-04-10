@@ -145,7 +145,7 @@ func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 	// Check if local file exists, and if so load and return the string content
 	// otherwise do the request and save the resulting string into the local file, then return the string.
 	// currently our parser loads the json content into a map data structure.
-	// this approach passes
+
 	var orderAndExtensionString string
 	if order == "" {
 		orderAndExtensionString = ".json?"
@@ -162,7 +162,7 @@ func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 
 	url := fmt.Sprintf("https://www.reddit.com/r/%s/%s%s", subreddit, orderAndExtensionString, paginationString)
 	fmt.Println(url)
-	filename := fmt.Sprintf("../data/r.%s.%s.%d.json", subreddit, order, pageNum)
+	filename := fmt.Sprintf("./data/r.%s.%s.%d.json", subreddit, order, pageNum)
 
 	var body []byte
 	_, err := os.ReadFile(filename)
@@ -196,10 +196,11 @@ func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 
 	return data
 }
+
 func LoadOrFetchPost(subreddit string, postId string, order string, offset int) PostAndCommentsContent {
 	url := fmt.Sprintf("https://www.reddit.com/r/%s/comments/%s.json", subreddit, postId)
 
-	filename := fmt.Sprintf("../data/%s.%s.%s.%d.json", subreddit, postId, order, offset)
+	filename := fmt.Sprintf("./data/%s.%s.%s.%d.json", subreddit, postId, order, offset)
 	var body []byte
 	_, err := os.ReadFile(filename)
 	if err == nil {
@@ -209,9 +210,13 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int) 
 
 		client := &http.Client{}
 		req, _ := http.NewRequest("GET", url, nil)
-		req.Header.Set("User-agent", "threadgettbot0.0.0")
+		req.Header.Set("User-agent", "threadgettbot0.0.1")
 		res, err := client.Do(req)
-
+		check(err)
+		fmt.Println(res.Status)
+		if !strings.Contains(res.Status, "200") {
+			err = fmt.Errorf("bad status: %s", res.Status)
+		}
 		check(err)
 		defer res.Body.Close()
 
