@@ -9,4 +9,6 @@ A command-line argument specifies which function to execute:
 - rate: walk the collection of local reddit content files, locate "well-shaped" comment threads and send them to chatgpt to get a single pun rating for the comment thread, on a 0 to 10 scale. Chatgpt's responses are saved to a local mongo database
 - review: walk the mongo database and print to stdout the threads that have a sufficiently high rating, e.g. 8/10
 
-Examples: https://docs.google.com/document/d/1pOsA2EmLBtGKc7UDEaORMlAiWEXbr8l3WveHnVUvf_Y/
+A ChatGPT API key is required to run the rate function. 
+
+Some output examples: https://docs.google.com/document/d/1pOsA2EmLBtGKc7UDEaORMlAiWEXbr8l3WveHnVUvf_Y/
