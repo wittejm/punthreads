@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -24,7 +26,7 @@ func getRatingFromResponse(response string) int {
 	return -1
 }
 
-func WalkPostsAndRate(subreddit string) {
+func ConcurrentlyWalkPostsAndRate(subreddit string) {
 	minScore := 10
 	postData := scrape.GatherSavedPosts(subreddit)
 
@@ -60,14 +62,13 @@ func WalkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minSc
 				Rating:     rating,
 			}
 
-			fmt.Println(entry)
 			db.WriteThreadAndResult(entry)
-			/*
-				if rating >= 7 {
-					scanner := bufio.NewScanner(os.Stdin)
-					scanner.Scan()
-				}
-			*/
+
+			if rating >= 1 {
+				scanner := bufio.NewScanner(os.Stdin)
+				scanner.Scan()
+			}
+
 		}
 	}
 }

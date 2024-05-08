@@ -1,10 +1,11 @@
 /*
-Get the subreddit page, then get all the posts in the result.
+Package scrape has functions to get the subreddit page, then get all the posts in the result.
+
+Do I really need to lead package comments with "Package scrape"? VSCode tells me to and it seems unnecessary.
 */
 package scrape
 
 import (
-	//"bufio"
 	"cmp"
 	"encoding/json"
 	"fmt"
@@ -17,7 +18,7 @@ import (
 type Comment struct {
 	Score   int
 	Text    string
-	Replies []Comment
+	Replies []Comment // Would this be better as a pointer? These are variable-length arrays and maybe we can optimize array ops if their elements are fixed lengths because they use pointers?
 }
 
 func (c Comment) ThreadLength() int {
@@ -55,10 +56,11 @@ func commentsContentToBareComments(commentContent CommentsContent) []Comment {
 	return comments
 }
 
-func Count(comments []Comment) int {
+// Unused
+func CountCommentsInThread(comments []Comment) int {
 	i := 0
 	for _, c := range comments {
-		i += 1 + Count(c.Replies)
+		i += 1 + CountCommentsInThread(c.Replies)
 	}
 	return i
 }
@@ -69,12 +71,6 @@ func PrintComments(comments []Comment, indent int) {
 		fmt.Printf("%s %d %5d %s\n", strings.Repeat("  ", indent), c.ThreadLength(), c.Score, c.Text)
 		PrintComments(c.Replies, indent+1)
 	}
-}
-
-func LocatePunThread(comments []Comment) []string {
-	var result []string
-
-	return result
 }
 
 func GatherPostIds(subreddit string, period string) []string {
@@ -137,6 +133,7 @@ func GatherSavedPosts(subreddit string) []PostAndCommentsContent {
 
 	filenames := getPostFilenames()
 	for _, filename := range filenames {
+		// Skip subreddit pages
 		if strings.Contains(filename, fmt.Sprintf("r.%s", subreddit)) || !strings.Contains(filename, subreddit) {
 			continue
 		}

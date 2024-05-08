@@ -23,5 +23,5 @@ func ClearBadFiles(subreddit string) {
 			os.Remove(fmt.Sprintf("./data/%s", filename))
 		}
 
-	} // has 2327 files
+	}
 }

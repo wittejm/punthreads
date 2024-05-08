@@ -11,7 +11,7 @@ import (
 func main() {
 
 	if len(os.Args) == 1 {
-		fmt.Println("commands: all,gather, rate, clear, review")
+		fmt.Println("commands: all, gather, rate, clear, review")
 		return
 	}
 
@@ -29,7 +29,7 @@ func main() {
 		scrape.ConcurrentlyFetchPosts("all", postIds)
 
 	} else if command == "rate" {
-		WalkPostsAndRate(subreddit)
+		ConcurrentlyWalkPostsAndRate(subreddit)
 	} else if command == "clear" {
 		scrape.ClearBadFiles("all")
 	} else if command == "review" {

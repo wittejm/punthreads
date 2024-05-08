@@ -32,11 +32,11 @@ func GetGptResponse(threadText string) string {
 
 	localFetchResult, err := db.GetThreadByText(threadText)
 	if err == nil {
-		fmt.Println("found existing response")
+		fmt.Println("found existing chatgpt response")
 		return localFetchResult.Response
 	}
 
-	fmt.Println("fetching from gpt")
+	fmt.Println("fetching from chatgpt")
 
 	OPENAI_API_KEY := os.Getenv("OPENAI_API_KEY")
 

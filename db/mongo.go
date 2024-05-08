@@ -30,6 +30,26 @@ func getCollection() *mongo.Collection {
 	}
 
 	db := client.Database("punthreads")
+
+	// Check if collection exists, create it if not
+	collections, err := db.ListCollectionNames(context.Background(), bson.M{})
+	if err != nil {
+		panic(err)
+	}
+	collectionExists := false
+	for _, coll := range collections {
+		if coll == "punthreads" {
+			collectionExists = true
+			break
+		}
+	}
+	if !collectionExists {
+		err := db.CreateCollection(context.Background(), "punthreads")
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	threadsCollection := db.Collection("punthreads")
 	return threadsCollection
 
@@ -65,7 +85,6 @@ func GetThreadByText(threadText string) (Entry, error) {
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		panic(err)
 	}
-	fmt.Println(results)
 	if len(results) == 0 {
 		return Entry{}, fmt.Errorf("thread with text %q not found", threadText)
 	}
@@ -86,7 +105,6 @@ func GetThreads() []Entry {
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		panic(err)
 	}
-	fmt.Println(results)
 
 	return results
 }
@@ -96,7 +114,7 @@ func Review() {
 	i := 0
 	for _, e := range entries {
 		if e.Rating >= 8 {
-			i += 1
+			i++
 			fmt.Println(i, ":", e.Rating, e.Subreddit, e.PostId, e.Title)
 			fmt.Println(e.ThreadText)
 		}

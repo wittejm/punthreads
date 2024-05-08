@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+// Top level of the JSON content from the subreddit page
 type SubredditContent struct {
 	Kind string
 	Data SubredditContentData `json:"data"`
@@ -140,11 +141,12 @@ func getBestShapedThread(comment Comment, minScore int) *Comment {
 	return &result
 }
 
+/*
+Check if local file exists, and if so load and return the string content
+otherwise do the request and save the resulting string into the local file, then return the string.
+currently our parser loads the json content into a map data structure.
+*/
 func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after string) SubredditContent {
-
-	// Check if local file exists, and if so load and return the string content
-	// otherwise do the request and save the resulting string into the local file, then return the string.
-	// currently our parser loads the json content into a map data structure.
 
 	var orderAndExtensionString string
 	if order == "" {
@@ -253,7 +255,7 @@ func PrintJSON(data map[string]interface{}, indents int) {
 		} else if vdata, ok := v.(map[string]interface{}); ok {
 			PrintJSON(vdata, indents+1)
 		} else {
-			fmt.Printf("%s T of v: %T v: %s v: %d\n", strings.Repeat("  ", indents), v, v, v)
+			fmt.Printf("%s Type: %T v as str: %s v as digit: %d\n", strings.Repeat("  ", indents), v, v, v)
 		}
 	}
 }
