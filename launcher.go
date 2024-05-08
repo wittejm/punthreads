@@ -8,7 +8,7 @@ import (
 	"github.com/wittejm/punthreads/scrape"
 )
 
-func main() {
+func main() { // Should the file containing the main function always be called main?
 
 	if len(os.Args) == 1 {
 		fmt.Println("commands: all, gather, rate, clear, review")

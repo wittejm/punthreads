@@ -24,7 +24,7 @@ func getCollection() *mongo.Collection {
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPI)
 
-	client, err := mongo.Connect(context.TODO(), opts)
+	client, err := mongo.Connect(context.TODO(), opts) //This works with no context object, and I didn't look into what it's needed for.
 	if err != nil {
 		panic(err)
 	}
