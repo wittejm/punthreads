@@ -12,6 +12,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -85,17 +86,20 @@ func GatherPostIds(subreddit string, period string) ([]string, error) {
 }
 
 func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(postIds))
+
 	for i, postId := range postIds {
 		fmt.Println("Fetching post:", i, postId)
 		time.Sleep(time.Millisecond * 100)
 		go func() {
-			_, err := LoadOrFetchPost(subreddit, postId, "", 0)
+			_, err := LoadOrFetchPost(subreddit, postId, "", 0, &waitGroup)
 			if err != nil {
-				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
+				//panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
 			}
 		}()
-
 	}
+	waitGroup.Wait()
 }
 
 func getPostFilenames() []string {
@@ -124,15 +128,13 @@ func GatherSavedPosts(subreddit string) ([]PostAndCommentsContent, error) {
 		}
 		body, err := os.ReadFile(fmt.Sprintf("./data/%s", filename))
 		if err != nil {
-			break
+			return nil, err
 		}
 		var data PostAndCommentsContent
-		fmt.Println("here?")
 		err = json.Unmarshal(body, &data)
 		if err != nil {
-			break
+			return nil, err
 		}
-		fmt.Println("here?")
 		allPostData = append(allPostData, data)
 	}
 

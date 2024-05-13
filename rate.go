@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/wittejm/punthreads/chatgpt"
@@ -26,30 +27,37 @@ func getRatingFromResponse(response string) (int, error) {
 }
 
 func ConcurrentlyWalkPostsAndRate(subreddit string) error {
+	fmt.Println("ConcurrentlyWalkPostsAndRate")
 	minScore := 10
 	postData, err := scrape.GatherSavedPosts(subreddit)
 	if err != nil {
 		return err
 	}
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(postData))
+
 	for _, post := range postData {
+		fmt.Println("postData")
 		if post.Post.Data.Children == nil {
+			fmt.Println("post.Post.Data.Children is nil")
 			continue
 		}
 		time.Sleep(time.Millisecond * 200)
-		completion := make(chan bool)
 		go func() {
-			err := walkPostAndRate(subreddit, post, minScore, completion)
+			err := walkPostAndRate(subreddit, post, minScore, &waitGroup)
 			if err != nil {
-				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
+				//panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
 			}
 		}()
 	}
+	fmt.Println("waiting")
+	waitGroup.Wait()
 	return nil
 }
 
-func walkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minScore int, completion chan<- bool) error {
-
-	defer func() { completion <- true }()
+func walkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minScore int, waitGroup *sync.WaitGroup) error {
+	fmt.Println("in walkPostAndRate")
+	defer waitGroup.Done()
 	title := post.Post.Data.Children[0].Data.Title
 	postId := post.Post.Data.Children[0].Data.Name[3:]
 	fmt.Println(post.Post.Data.Children[0].Data.Title, post.Post.Data.Children[0].Data.Name)

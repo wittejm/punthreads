@@ -12,6 +12,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -19,9 +20,11 @@ import (
 // Top level of the JSON content from the subreddit page
 type SubredditContent struct {
 	Kind string
-	Data struct {
-		Children []SubredditPostChild `json:"children"`
-	} `json:"data"`
+	Data SubredditContentData `json:"data"`
+}
+
+type SubredditContentData struct {
+	Children []SubredditPostChild `json:"children"`
 }
 
 type SubredditPostChild struct {
@@ -215,11 +218,12 @@ func loadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 	return &data, err
 }
 
-func LoadOrFetchPost(subreddit string, postId string, order string, offset int) (*PostAndCommentsContent, error) {
+func LoadOrFetchPost(subreddit string, postId string, order string, offset int, waitGroup *sync.WaitGroup) (*PostAndCommentsContent, error) {
 	url := fmt.Sprintf("https://www.reddit.com/r/%s/comments/%s.json", subreddit, postId)
 
 	filename := fmt.Sprintf("./data/%s.%s.%s.%d.json", subreddit, postId, order, offset)
 	var body []byte
+	defer waitGroup.Done()
 	_, err := os.ReadFile(filename)
 	if err == nil {
 		fmt.Println("read the file")
