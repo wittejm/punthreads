@@ -78,7 +78,7 @@ func GatherPostIds(subreddit string, period string) ([]string, error) {
 			break
 		}
 		for _, c := range subredditContent.Data.Children[2:] {
-			postId := c.Name[3:]
+			postId := c.Data.Name[3:]
 			allPostIds = append(allPostIds, postId)
 		}
 	}

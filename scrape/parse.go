@@ -18,6 +18,7 @@ import (
 )
 
 // Top level of the JSON content from the subreddit page
+
 type SubredditContent struct {
 	Kind string
 	Data SubredditContentData `json:"data"`
@@ -28,7 +29,7 @@ type SubredditContentData struct {
 }
 
 type SubredditPostChild struct {
-	SubredditPostChildData `json:"data"`
+	Data SubredditPostChildData `json:"data"`
 }
 
 type SubredditPostChildData struct {
@@ -280,7 +281,7 @@ func pageGenerator(subreddit string, order string) func() (*SubredditContent, er
 		if len(nextPageContent.Data.Children) == 0 {
 			lastPostId = ""
 		} else {
-			lastPostId = nextPageContent.Data.Children[len(nextPageContent.Data.Children)-1].Name
+			lastPostId = nextPageContent.Data.Children[len(nextPageContent.Data.Children)-1].Data.Name
 		}
 		counter = counter + 1
 		return nextPageContent, err
