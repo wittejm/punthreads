@@ -46,7 +46,7 @@ func commentsContentToBareComments(commentContent CommentsContent) []Comment {
 	for _, c := range commentContent.Data.Children {
 		comment := c.Data.Body
 		score := c.Data.Score
-		replies := commentsContentToBareComments(c.Data.Replies)
+		replies := commentsContentToBareComments(*c.Data.Replies)
 		comments = append(comments,
 			Comment{
 				Score:   score,
