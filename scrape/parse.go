@@ -76,42 +76,9 @@ type CommentChild struct {
 }
 
 type CommentChildData struct {
-	Body    string           `json:"body"`
-	Score   int              `json:"score"`
-	Replies *CommentsContent `json:"replies"` // Change type to pointer to CommentsContent
-}
-
-func (c *CommentChildData) UnmarshalJSON(data []byte) error {
-	// Define a temporary struct to handle the unmarshaling
-	type CommentChildDataTemp struct {
-		Body    string          `json:"body"`
-		Score   int             `json:"score"`
-		Replies json.RawMessage `json:"replies"` // RawMessage to handle JSON or string
-	}
-
-	// Unmarshal into the temporary struct
-	var temp CommentChildDataTemp
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return err
-	}
-
-	// If Replies field is an empty string, set it to nil
-	if string(temp.Replies) == `""` {
-		c.Replies = nil
-	} else {
-		// Otherwise, unmarshal the Replies field into the actual type
-		var replies CommentsContent
-		if err := json.Unmarshal(temp.Replies, &replies); err != nil {
-			return err
-		}
-		c.Replies = &replies
-	}
-
-	// Assign other fields
-	c.Body = temp.Body
-	c.Score = temp.Score
-
-	return nil
+	Body    string          `json:"body"`
+	Score   int             `json:"score"`
+	Replies CommentsContent `json:"replies"`
 }
 
 func (r *PostAndCommentsContent) UnmarshalJSON(p []byte) error {
@@ -133,18 +100,6 @@ func (r *PostAndCommentsContent) UnmarshalJSON(p []byte) error {
 	}
 	if err := mapstructure.Decode(commentsContent, &r.Comments); err != nil {
 		return err
-	}
-	// Unmarshal 'replies' field in each comment child data
-	if comments, ok := r.Comments.Data["children"].([]interface{}); ok {
-		for _, comment := range comments {
-			if commentMap, ok := comment.(map[string]interface{}); ok {
-				commentChild := CommentChildData{}
-				if err := json.Unmarshal(commentMap["data"], &commentChild); err != nil {
-					return err
-				}
-				r.Comments.Data["children"].([]interface{})[i] = commentChild
-			}
-		}
 	}
 	return nil
 }
@@ -260,7 +215,7 @@ func loadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 	var data SubredditContent
 	err = json.Unmarshal(body, &data)
 
-	return &data, err
+	return &data, nil
 }
 
 func LoadOrFetchPost(subreddit string, postId string, order string, offset int, waitGroup *sync.WaitGroup) (*PostAndCommentsContent, error) {
@@ -309,9 +264,9 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int, 
 	}
 
 	var data PostAndCommentsContent
-	err = json.Unmarshal(body, &data)
 
-	return &data, err
+	err = json.Unmarshal(body, &data)
+	return &data, nil
 }
 
 func pageGenerator(subreddit string, order string) func() (*SubredditContent, error) {
