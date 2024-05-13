@@ -21,65 +21,46 @@ import (
 
 type SubredditContent struct {
 	Kind string
-	Data SubredditContentData `json:"data"`
-}
-
-type SubredditContentData struct {
-	Children []SubredditPostChild `json:"children"`
-}
-
-type SubredditPostChild struct {
-	Data SubredditPostChildData `json:"data"`
-}
-
-type SubredditPostChildData struct {
-	Title string `json:"title"`
-	Name  string `json:"name"`
-	Score int    `json:"score"`
+	Data struct {
+		Children []struct {
+			Data struct {
+				Title string `json:"title"`
+				Name  string `json:"name"`
+				Score int    `json:"score"`
+			} `json:"data"`
+		} `json:"children"`
+	} `json:"data"`
 }
 
 type PostAndCommentsContent struct {
-	Post     PostContent
+	Post struct {
+		Kind string `json:"kind"`
+		Data struct {
+			Modhash  string `json:"modhash"`
+			Children []struct {
+				Kind string `json:"kind"`
+				Data struct {
+					Title string `json:"title"`
+					Name  string `json:"name"`
+				} `json:"data"`
+			} `json:"children"`
+		} `json:"data"`
+	}
 	Comments CommentsContent
 }
 
-type PostContent struct {
-	Kind string   `json:"kind"`
-	Data PostData `json:"data"`
-}
-
-type PostData struct {
-	Modhash  string      `json:"modhash"`
-	Children []PostChild `json:"children"`
-}
-
-type PostChild struct {
-	Kind string        `json:"kind"`
-	Data PostChildData `json:"data"`
-}
-
-type PostChildData struct {
-	Title string `json:"title"`
-	Name  string `json:"name"`
-}
-
 type CommentsContent struct {
-	Kind string       `json:"kind"`
-	Data CommentsData `json:"data"`
-}
-
-type CommentsData struct {
-	Children []CommentChild `json:"children"`
-}
-type CommentChild struct {
-	Kind string           `json:"kind"`
-	Data CommentChildData `json:"data"`
-}
-
-type CommentChildData struct {
-	Body    string          `json:"body"`
-	Score   int             `json:"score"`
-	Replies CommentsContent `json:"replies"`
+	Kind string `json:"kind"`
+	Data struct {
+		Children []struct {
+			Kind string `json:"kind"`
+			Data struct {
+				Body    string          `json:"body"`
+				Score   int             `json:"score"`
+				Replies CommentsContent `json:"replies"`
+			} `json:"data"`
+		} `json:"children"`
+	} `json:"data"`
 }
 
 func (r *PostAndCommentsContent) UnmarshalJSON(p []byte) error {
