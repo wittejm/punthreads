@@ -20,13 +20,13 @@ type Entry struct {
 	Rating     int
 }
 
-func getCollection() *mongo.Collection {
+func getCollection() (*mongo.Collection, error) {
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPI)
 
 	client, err := mongo.Connect(context.TODO(), opts) //This works with no context object, and I didn't look into what it's needed for.
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	db := client.Database("punthreads")
@@ -34,7 +34,7 @@ func getCollection() *mongo.Collection {
 	// Check if collection exists, create it if not
 	collections, err := db.ListCollectionNames(context.Background(), bson.M{})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	collectionExists := false
 	for _, coll := range collections {
@@ -51,13 +51,16 @@ func getCollection() *mongo.Collection {
 	}
 
 	threadsCollection := db.Collection("punthreads")
-	return threadsCollection
+	return threadsCollection, nil
 
 }
 
-func WriteThreadAndResult(entry Entry) {
-	threadsCollection := getCollection()
-	_, err := threadsCollection.InsertOne(context.TODO(), bson.D{
+func WriteThreadAndResult(entry Entry) error {
+	threadsCollection, err := getCollection()
+	if err != nil {
+		return err
+	}
+	_, err = threadsCollection.InsertOne(context.TODO(), bson.D{
 		{Key: "subreddit", Value: entry.Subreddit},
 		{Key: "title", Value: entry.Title},
 		{Key: "postId", Value: entry.PostId},
@@ -66,51 +69,54 @@ func WriteThreadAndResult(entry Entry) {
 		{Key: "rating", Value: entry.Rating},
 	})
 
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
-func GetThreadByText(threadText string) (Entry, error) {
+func GetThreadByText(threadText string) (*Entry, error) {
 
-	threadsCollection := getCollection()
+	threadsCollection, err := getCollection()
 
 	filter := bson.D{{Key: "threadText", Value: threadText}}
 
 	cursor, err := threadsCollection.Find(context.TODO(), filter, nil)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	var results []Entry
 	if err = cursor.All(context.TODO(), &results); err != nil {
-		panic(err)
+		return nil, err
 	}
 	if len(results) == 0 {
-		return Entry{}, fmt.Errorf("thread with text %q not found", threadText)
+		return nil, fmt.Errorf("thread with text %q not found", threadText)
 	}
 
-	return results[0], nil
+	return &results[0], nil
 }
 
-func GetThreads() []Entry {
-	threadsCollection := getCollection()
-
+func GetThreads() ([]Entry, error) {
+	threadsCollection, err := getCollection()
+	if err != nil {
+		return nil, err
+	}
 	filter := bson.D{}
 
 	cursor, err := threadsCollection.Find(context.TODO(), filter, nil)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	var results []Entry
 	if err = cursor.All(context.TODO(), &results); err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return results
+	return results, nil
 }
 
-func Review() {
-	entries := GetThreads()
+func Review() error {
+	entries, err := GetThreads()
+	if err != nil {
+		return err
+	}
 	i := 0
 	for _, e := range entries {
 		if e.Rating >= 8 {
@@ -119,4 +125,5 @@ func Review() {
 			fmt.Println(e.ThreadText)
 		}
 	}
+	return nil
 }

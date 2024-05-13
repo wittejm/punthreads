@@ -28,12 +28,12 @@ type ResponseBody struct {
 	Choices []Choice `json:"choices"`
 }
 
-func GetGptResponse(threadText string) string {
+func GetGPTResponse(threadText string) (string, error) {
 
 	localFetchResult, err := db.GetThreadByText(threadText)
 	if err == nil {
 		fmt.Println("found existing chatgpt response")
-		return localFetchResult.Response
+		return localFetchResult.Response, nil
 	}
 
 	fmt.Println("fetching from chatgpt")
@@ -56,12 +56,12 @@ func GetGptResponse(threadText string) string {
 
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(bodyJSON))
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", OPENAI_API_KEY))
@@ -70,22 +70,22 @@ func GetGptResponse(threadText string) string {
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	defer res.Body.Close()
 
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	var result ResponseBody
 
-	if err := json.Unmarshal(resBody, &result); err != nil {
-		panic(err)
+	if err != nil {
+		return "", err
 	}
 
 	if len(result.Choices) < 1 {
-		return string(resBody)
+		return string(resBody), nil
 	}
-	return string(result.Choices[0].Message.Content)
+	return string(result.Choices[0].Message.Content), nil
 }

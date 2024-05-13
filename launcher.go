@@ -24,7 +24,11 @@ func launch() {
 	}
 
 	if command == "gather" {
-		postIds := scrape.GatherPostIds(subreddit, "all")
+		postIds, err := scrape.GatherPostIds(subreddit, "all")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s", err)
+			return
+		}
 		fmt.Println("len(postIds):", len(postIds))
 		scrape.ConcurrentlyFetchPosts("all", postIds)
 

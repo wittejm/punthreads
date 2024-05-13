@@ -1,9 +1,8 @@
 package main
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -13,34 +12,44 @@ import (
 	"github.com/wittejm/punthreads/scrape"
 )
 
-func getRatingFromResponse(response string) int {
+func getRatingFromResponse(response string) (int, error) {
 	pattern := regexp.MustCompile(`Pun: ([0-9]+)/10`)
 	result := pattern.FindStringSubmatch(response)
 	if len(result) > 1 {
 		convResult, err := strconv.Atoi(result[1])
 		if err != nil {
-			panic(err)
+			return -1, err
 		}
-		return convResult
+		return convResult, nil
 	}
-	return -1
+	return -1, errors.New("Expected text pattern not in GPT response")
 }
 
-func ConcurrentlyWalkPostsAndRate(subreddit string) {
+func ConcurrentlyWalkPostsAndRate(subreddit string) error {
 	minScore := 10
-	postData := scrape.GatherSavedPosts(subreddit)
-
+	postData, err := scrape.GatherSavedPosts(subreddit)
+	if err != nil {
+		return err
+	}
 	for _, post := range postData {
 		if post.Post.Data.Children == nil {
 			continue
 		}
 		time.Sleep(time.Millisecond * 200)
-		go WalkPostAndRate(subreddit, post, minScore)
+		completion := make(chan bool)
+		go func() {
+			err := walkPostAndRate(subreddit, post, minScore, completion)
+			if err != nil {
+				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
+			}
+		}()
 	}
+	return nil
 }
 
-func WalkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minScore int) {
+func walkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minScore int, completion chan<- bool) error {
 
+	defer func() { completion <- true }()
 	title := post.Post.Data.Children[0].Data.Title
 	postId := post.Post.Data.Children[0].Data.Name[3:]
 	fmt.Println(post.Post.Data.Children[0].Data.Title, post.Post.Data.Children[0].Data.Name)
@@ -51,8 +60,14 @@ func WalkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minSc
 
 			threadText := commentThread.ThreadToString()
 
-			response := chatgpt.GetGptResponse(threadText)
-			rating := getRatingFromResponse(response)
+			response, err := chatgpt.GetGPTResponse(threadText)
+			if err != nil {
+				return err
+			}
+			rating, err := getRatingFromResponse(response)
+			if err != nil {
+				return err
+			}
 			entry := db.Entry{
 				Subreddit:  subreddit,
 				Title:      title,
@@ -62,13 +77,11 @@ func WalkPostAndRate(subreddit string, post scrape.PostAndCommentsContent, minSc
 				Rating:     rating,
 			}
 
-			db.WriteThreadAndResult(entry)
-
-			if rating >= 1 {
-				scanner := bufio.NewScanner(os.Stdin)
-				scanner.Scan()
+			err = db.WriteThreadAndResult(entry)
+			if err != nil {
+				return err
 			}
-
 		}
 	}
+	return nil
 }

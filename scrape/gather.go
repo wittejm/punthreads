@@ -56,15 +56,6 @@ func commentsContentToBareComments(commentContent CommentsContent) []Comment {
 	return comments
 }
 
-// Unused
-func CountCommentsInThread(comments []Comment) int {
-	i := 0
-	for _, c := range comments {
-		i += 1 + CountCommentsInThread(c.Replies)
-	}
-	return i
-}
-
 func PrintComments(comments []Comment, indent int) {
 	for _, c := range comments {
 
@@ -73,12 +64,15 @@ func PrintComments(comments []Comment, indent int) {
 	}
 }
 
-func GatherPostIds(subreddit string, period string) []string {
+func GatherPostIds(subreddit string, period string) ([]string, error) {
 	var allPostIds []string
-	generator := PageGenerator(subreddit, period)
+	generator := pageGenerator(subreddit, period)
 
-	for i := 0; i < 100; i++ {
-		subredditContent := generator()
+	for i := 0; i < 2; i++ {
+		subredditContent, err := generator()
+		if err != nil {
+			return nil, err
+		}
 		if len(subredditContent.Data.Children) < 2 {
 			break
 		}
@@ -87,31 +81,21 @@ func GatherPostIds(subreddit string, period string) []string {
 			allPostIds = append(allPostIds, postId)
 		}
 	}
-	return allPostIds
+	return allPostIds, nil
 }
 
 func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
-	postIds2 := postIds[576:]
-	for i, postId := range postIds2 {
+	for i, postId := range postIds {
 		fmt.Println("Fetching post:", i, postId)
 		time.Sleep(time.Millisecond * 100)
-		go LoadOrFetchPost(subreddit, postId, "", 0)
-	}
-}
+		go func() {
+			_, err := LoadOrFetchPost(subreddit, postId, "", 0)
+			if err != nil {
+				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
+			}
+		}()
 
-func GatherPosts(subreddit string, period string) []PostAndCommentsContent {
-	var allPostData []PostAndCommentsContent
-	generator := PageGenerator(subreddit, period)
-
-	for i := 0; i < 100; i++ {
-		subredditContent := generator()
-		for _, c := range subredditContent.Data.Children[2:] {
-			postId := c.Name[3:]
-			postData := LoadOrFetchPost(subreddit, postId, "", 0)
-			allPostData = append(allPostData, postData)
-		}
 	}
-	return allPostData
 }
 
 func getPostFilenames() []string {
@@ -128,10 +112,11 @@ func getPostFilenames() []string {
 	}
 	return filenames
 }
-func GatherSavedPosts(subreddit string) []PostAndCommentsContent {
+func GatherSavedPosts(subreddit string) ([]PostAndCommentsContent, error) {
 	var allPostData []PostAndCommentsContent
 
 	filenames := getPostFilenames()
+	var err error
 	for _, filename := range filenames {
 		// Skip subreddit pages
 		if strings.Contains(filename, fmt.Sprintf("r.%s", subreddit)) || !strings.Contains(filename, subreddit) {
@@ -139,15 +124,19 @@ func GatherSavedPosts(subreddit string) []PostAndCommentsContent {
 		}
 		body, err := os.ReadFile(fmt.Sprintf("./data/%s", filename))
 		if err != nil {
-			panic(err)
+			break
 		}
 		var data PostAndCommentsContent
-		json.Unmarshal(body, &data)
-
+		fmt.Println("here?")
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			break
+		}
+		fmt.Println("here?")
 		allPostData = append(allPostData, data)
 	}
 
-	return allPostData
+	return allPostData, err
 }
 
 func CommentsToBestCommentThreads(comments CommentsContent, minScore int) []Comment {

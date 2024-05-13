@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -17,11 +19,9 @@ import (
 // Top level of the JSON content from the subreddit page
 type SubredditContent struct {
 	Kind string
-	Data SubredditContentData `json:"data"`
-}
-
-type SubredditContentData struct {
-	Children []SubredditPostChild `json:"children"`
+	Data struct {
+		Children []SubredditPostChild `json:"children"`
+	} `json:"data"`
 }
 
 type SubredditPostChild struct {
@@ -101,12 +101,6 @@ func (r *PostAndCommentsContent) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func getBestShapedThread(comment Comment, minScore int) *Comment {
 
 	if len(comment.Text) > 200 || strings.ContainsAny(comment.Text, "\n\r") || comment.Score < minScore || strings.Contains(comment.Text, "[removed]") || strings.Contains(comment.Text, "[deleted]") {
@@ -146,60 +140,82 @@ Check if local file exists, and if so load and return the string content
 otherwise do the request and save the resulting string into the local file, then return the string.
 currently our parser loads the json content into a map data structure.
 */
-func LoadOrFetchSubreddit(subreddit string, order string, pageNum int, after string) SubredditContent {
 
-	var orderAndExtensionString string
+func fileExists(name string) (bool, error) {
+	_, err := os.Stat(name)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return false, err
+	}
+	return err == nil, nil
+}
+
+func loadOrFetchSubreddit(subreddit string, order string, pageNum int, after string) (*SubredditContent, error) {
+
+	v := url.Values{}
+	v.Add("limit", "5")
+	if order != "" {
+		v.Add("t", order)
+	}
+	if after != "" {
+		v.Add("after", after)
+	}
+
+	var extensionString string
 	if order == "" {
-		orderAndExtensionString = ".json?"
+		extensionString = ".json"
 	} else {
-		orderAndExtensionString = fmt.Sprintf("top/.json?t=%s", order)
+		extensionString = "top/.json"
 	}
 
-	var paginationString string
-	if after == "" {
-		paginationString = "&limit=100"
-	} else {
-		paginationString = fmt.Sprintf("&after=%s&limit=100", after)
-	}
-
-	url := fmt.Sprintf("https://www.reddit.com/r/%s/%s%s", subreddit, orderAndExtensionString, paginationString)
+	url := fmt.Sprintf("https://www.reddit.com/r/%s/%s", subreddit, extensionString)
 	fmt.Println(url)
 	filename := fmt.Sprintf("./data/r.%s.%s.%d.json", subreddit, order, pageNum)
 
-	var body []byte
-	_, err := os.ReadFile(filename)
-	if err == nil {
-		fmt.Printf("read the file: %s\n", filename)
-	} else {
+	exists, err := fileExists(filename)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
 		fmt.Println("fetching from reddit")
 
 		client := &http.Client{}
 		req, _ := http.NewRequest("GET", url, nil)
+		req.URL.RawQuery = v.Encode()
 		req.Header.Set("User-agent", "threadgettbot0.0.0")
 		res, err := client.Do(req)
 
-		check(err)
+		if err != nil {
+			return nil, err
+		}
 		defer res.Body.Close()
 
 		body, err := io.ReadAll(res.Body)
-		check(err)
+		if err != nil {
+			return nil, err
+		}
 
 		f, err := os.Create(filename)
-		check(err)
+		if err != nil {
+			return nil, err
+		}
 
 		n3, err := f.Write(body)
-		check(err)
+		if err != nil {
+			return nil, err
+		}
 		fmt.Printf("wrote %d bytes\n", n3)
 	}
-	body, err = os.ReadFile(filename)
-	check(err)
+	body, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
 	var data SubredditContent
-	json.Unmarshal(body, &data)
+	err = json.Unmarshal(body, &data)
 
-	return data
+	return &data, err
 }
 
-func LoadOrFetchPost(subreddit string, postId string, order string, offset int) PostAndCommentsContent {
+func LoadOrFetchPost(subreddit string, postId string, order string, offset int) (*PostAndCommentsContent, error) {
 	url := fmt.Sprintf("https://www.reddit.com/r/%s/comments/%s.json", subreddit, postId)
 
 	filename := fmt.Sprintf("./data/%s.%s.%s.%d.json", subreddit, postId, order, offset)
@@ -214,65 +230,55 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int) 
 		req, _ := http.NewRequest("GET", url, nil)
 		req.Header.Set("User-agent", "threadgettbot0.0.1")
 		res, err := client.Do(req)
-		check(err)
+		if err != nil {
+			return nil, err
+		}
 		fmt.Println(res.Status)
-		if !strings.Contains(res.Status, "200") {
+		if res.StatusCode != 200 {
 			err = fmt.Errorf("bad status: %s", res.Status)
 		}
-		check(err)
 		defer res.Body.Close()
 
 		body, err := io.ReadAll(res.Body)
-		check(err)
-
+		if err != nil {
+			return nil, err
+		}
 		f, err := os.Create(filename)
-		check(err)
-
+		if err != nil {
+			return nil, err
+		}
 		n3, err := f.Write(body)
-		check(err)
+		if err != nil {
+			return nil, err
+		}
 		fmt.Printf("wrote %d bytes\n", n3)
 	}
 
 	body, err = os.ReadFile(filename)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	var data PostAndCommentsContent
-	json.Unmarshal(body, &data)
+	err = json.Unmarshal(body, &data)
 
-	return data
+	return &data, err
 }
 
-func PrintJSON(data map[string]interface{}, indents int) {
-	for k, v := range data {
-		fmt.Println(strings.Repeat("  ", indents), "k:", k)
-
-		if vdata, ok := v.([]interface{}); ok {
-			for _, item := range vdata {
-				if vitem, ok := item.(map[string]interface{}); ok {
-					PrintJSON(vitem, indents+1)
-				}
-			}
-		} else if vdata, ok := v.(map[string]interface{}); ok {
-			PrintJSON(vdata, indents+1)
-		} else {
-			fmt.Printf("%s Type: %T v as str: %s v as digit: %d\n", strings.Repeat("  ", indents), v, v, v)
-		}
-	}
-}
-
-func PageGenerator(subreddit string, order string) func() SubredditContent {
+func pageGenerator(subreddit string, order string) func() (*SubredditContent, error) {
 	lastPostId := ""
-	var nextPageContent SubredditContent
 	counter := 1
-	return func() SubredditContent {
-		nextPageContent = LoadOrFetchSubreddit(subreddit, order, counter, lastPostId)
-
+	return func() (*SubredditContent, error) {
+		nextPageContent, err := loadOrFetchSubreddit(subreddit, order, counter, lastPostId)
+		if err != nil {
+			return nil, err
+		}
 		if len(nextPageContent.Data.Children) == 0 {
 			lastPostId = ""
 		} else {
 			lastPostId = nextPageContent.Data.Children[len(nextPageContent.Data.Children)-1].Name
 		}
 		counter = counter + 1
-		return nextPageContent
+		return nextPageContent, err
 	}
 }
