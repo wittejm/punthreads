@@ -8,7 +8,7 @@ import (
 	"github.com/wittejm/punthreads/scrape"
 )
 
-func main() { // Should the file containing the main function always be called main?
+func launch() {
 
 	if len(os.Args) == 1 {
 		fmt.Println("commands: all, gather, rate, clear, review")
@@ -34,5 +34,7 @@ func main() { // Should the file containing the main function always be called m
 		scrape.ClearBadFiles("all")
 	} else if command == "review" {
 		db.Review()
+	} else {
+		fmt.Println("Unrecognized command")
 	}
 }
