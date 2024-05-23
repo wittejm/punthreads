@@ -12,13 +12,14 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Comment struct {
 	Score   int
 	Text    string
-	Replies []Comment // Would this be better as a pointer? These are variable-length arrays and maybe we can optimize array ops if their elements are fixed lengths because they use pointers?
+	Replies []Comment // I wanted to replace this with an array of pointers following Chris's feedback, but my call to slices.SortFunc(comment.Replies) in parse.go seems to need structs, not pointers. I don't know how to reconcile those two things.
 }
 
 func (c Comment) ThreadLength() int {
@@ -31,9 +32,7 @@ func (c Comment) ThreadLength() int {
 
 func (c Comment) ThreadToString() string {
 	var repliesString string
-	if c.Replies == nil || len(c.Replies) == 0 {
-		repliesString = ""
-	} else {
+	if len(c.Replies) != 0 {
 		repliesString = c.Replies[0].ThreadToString()
 	}
 	result := fmt.Sprintf("%d %s \n%s", c.Score, c.Text, repliesString)
@@ -56,15 +55,6 @@ func commentsContentToBareComments(commentContent CommentsContent) []Comment {
 	return comments
 }
 
-// Unused
-func CountCommentsInThread(comments []Comment) int {
-	i := 0
-	for _, c := range comments {
-		i += 1 + CountCommentsInThread(c.Replies)
-	}
-	return i
-}
-
 func PrintComments(comments []Comment, indent int) {
 	for _, c := range comments {
 
@@ -73,45 +63,46 @@ func PrintComments(comments []Comment, indent int) {
 	}
 }
 
-func GatherPostIds(subreddit string, period string) []string {
+func GatherPostIds(subreddit string, period string) ([]string, error) {
 	var allPostIds []string
-	generator := PageGenerator(subreddit, period)
+	generator := pageGenerator(subreddit, period)
 
-	for i := 0; i < 100; i++ {
-		subredditContent := generator()
+	for i := 0; i < 2; i++ {
+		subredditContent, err := generator()
+		if err != nil {
+			return nil, err
+		}
 		if len(subredditContent.Data.Children) < 2 {
 			break
 		}
 		for _, c := range subredditContent.Data.Children[2:] {
-			postId := c.Name[3:]
+			postId := c.Data.Name[3:]
 			allPostIds = append(allPostIds, postId)
 		}
 	}
-	return allPostIds
+	return allPostIds, nil
 }
 
 func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
-	postIds2 := postIds[576:]
-	for i, postId := range postIds2 {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(postIds))
+	var tokens = make(chan struct{}, 20)
+
+	for i, postId := range postIds {
 		fmt.Println("Fetching post:", i, postId)
 		time.Sleep(time.Millisecond * 100)
-		go LoadOrFetchPost(subreddit, postId, "", 0)
-	}
-}
+		tokens <- struct{}{}
+		go func() {
+			_, err := LoadOrFetchPost(subreddit, postId, "", 0, &waitGroup)
+			if err != nil {
+				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
+			}
+		}()
+		<-tokens
+		// TODO: This code runs, but I don't think the concurrency is currect. It doesn't seem to run any faster, or wait for all threads to finish.
 
-func GatherPosts(subreddit string, period string) []PostAndCommentsContent {
-	var allPostData []PostAndCommentsContent
-	generator := PageGenerator(subreddit, period)
-
-	for i := 0; i < 100; i++ {
-		subredditContent := generator()
-		for _, c := range subredditContent.Data.Children[2:] {
-			postId := c.Name[3:]
-			postData := LoadOrFetchPost(subreddit, postId, "", 0)
-			allPostData = append(allPostData, postData)
-		}
 	}
-	return allPostData
+	waitGroup.Wait()
 }
 
 func getPostFilenames() []string {
@@ -128,10 +119,11 @@ func getPostFilenames() []string {
 	}
 	return filenames
 }
-func GatherSavedPosts(subreddit string) []PostAndCommentsContent {
+func GatherSavedPosts(subreddit string) ([]PostAndCommentsContent, error) {
 	var allPostData []PostAndCommentsContent
 
 	filenames := getPostFilenames()
+	var err error
 	for _, filename := range filenames {
 		// Skip subreddit pages
 		if strings.Contains(filename, fmt.Sprintf("r.%s", subreddit)) || !strings.Contains(filename, subreddit) {
@@ -139,15 +131,17 @@ func GatherSavedPosts(subreddit string) []PostAndCommentsContent {
 		}
 		body, err := os.ReadFile(fmt.Sprintf("./data/%s", filename))
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		var data PostAndCommentsContent
-		json.Unmarshal(body, &data)
-
+		err = json.Unmarshal(body, &data)
+		// if err != nil {
+		// 	return nil, err
+		// }
 		allPostData = append(allPostData, data)
 	}
 
-	return allPostData
+	return allPostData, err
 }
 
 func CommentsToBestCommentThreads(comments CommentsContent, minScore int) []Comment {

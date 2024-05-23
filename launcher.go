@@ -24,12 +24,20 @@ func launch() {
 	}
 
 	if command == "gather" {
-		postIds := scrape.GatherPostIds(subreddit, "all")
+		postIds, err := scrape.GatherPostIds(subreddit, "all")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s", err)
+			return
+		}
 		fmt.Println("len(postIds):", len(postIds))
 		scrape.ConcurrentlyFetchPosts("all", postIds)
 
 	} else if command == "rate" {
-		ConcurrentlyWalkPostsAndRate(subreddit)
+		err := ConcurrentlyWalkPostsAndRate(subreddit)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s", err)
+			return
+		}
 	} else if command == "clear" {
 		scrape.ClearBadFiles("all")
 	} else if command == "review" {
