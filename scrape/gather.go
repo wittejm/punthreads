@@ -19,7 +19,7 @@ import (
 type Comment struct {
 	Score   int
 	Text    string
-	Replies []Comment // Would this be better as a pointer? These are variable-length arrays and maybe we can optimize array ops if their elements are fixed lengths because they use pointers?
+	Replies []Comment // I wanted to replace this with an array of pointers following Chris's feedback, but my call to slices.SortFunc(comment.Replies) in parse.go seems to need structs, not pointers. I don't know how to reconcile those two things.
 }
 
 func (c Comment) ThreadLength() int {
@@ -32,9 +32,7 @@ func (c Comment) ThreadLength() int {
 
 func (c Comment) ThreadToString() string {
 	var repliesString string
-	if c.Replies == nil || len(c.Replies) == 0 {
-		repliesString = ""
-	} else {
+	if len(c.Replies) != 0 {
 		repliesString = c.Replies[0].ThreadToString()
 	}
 	result := fmt.Sprintf("%d %s \n%s", c.Score, c.Text, repliesString)
@@ -88,7 +86,7 @@ func GatherPostIds(subreddit string, period string) ([]string, error) {
 func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(postIds))
-	var tokens = make(chan struct{}, 2)
+	var tokens = make(chan struct{}, 20)
 
 	for i, postId := range postIds {
 		fmt.Println("Fetching post:", i, postId)
@@ -97,10 +95,11 @@ func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
 		go func() {
 			_, err := LoadOrFetchPost(subreddit, postId, "", 0, &waitGroup)
 			if err != nil {
-				//panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
+				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
 			}
 		}()
 		<-tokens
+		// TODO: This code runs, but I don't think the concurrency is currect. It doesn't seem to run any faster, or wait for all threads to finish.
 
 	}
 	waitGroup.Wait()

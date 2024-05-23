@@ -98,26 +98,19 @@ func getBestShapedThread(comment Comment, minScore int) *Comment {
 	slices.SortFunc(comment.Replies, lenCmp)
 
 	var replies []Comment
-	if comment.Replies == nil {
-		replies = []Comment{}
-	} else {
+	if len(comment.Replies) != 0 {
 		repliesResult := getBestShapedThread(comment.Replies[0], minScore)
-		if repliesResult == nil {
-			replies = []Comment{}
-
-		} else {
+		if repliesResult != nil {
 			replies = []Comment{*repliesResult}
 		}
 	}
 
-	result := Comment{
+	return &Comment{
 
 		Score:   comment.Score,
 		Text:    comment.Text,
 		Replies: replies,
 	}
-
-	return &result
 }
 
 /*
@@ -217,8 +210,8 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int, 
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(res.Status)
-		if res.StatusCode != 200 {
+
+		if res.StatusCode != http.StatusOK {
 			err = fmt.Errorf("bad status: %s", res.Status)
 			return nil, err
 		}
