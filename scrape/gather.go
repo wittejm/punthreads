@@ -100,8 +100,6 @@ func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
 			<-tokens
 		}()
 
-		// TODO: This code runs, but I don't think the concurrency is currect. It doesn't seem to run any faster, or wait for all threads to finish.
-
 	}
 	waitGroup.Wait()
 }
