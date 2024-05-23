@@ -97,8 +97,9 @@ func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
 			if err != nil {
 				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
 			}
+			<-tokens
 		}()
-		<-tokens
+
 		// TODO: This code runs, but I don't think the concurrency is currect. It doesn't seem to run any faster, or wait for all threads to finish.
 
 	}

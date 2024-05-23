@@ -205,7 +205,7 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int, 
 
 		client := &http.Client{}
 		req, _ := http.NewRequest("GET", url, nil)
-		req.Header.Set("User-agent", "threadgettbot0.0.1")
+		req.Header.Set("User-agent", "threadgettbot0.0.2")
 		res, err := client.Do(req)
 		if err != nil {
 			return nil, err
