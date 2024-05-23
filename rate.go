@@ -35,7 +35,7 @@ func ConcurrentlyWalkPostsAndRate(subreddit string) error {
 	}
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(postData))
-
+	var tokens = make(chan struct{}, 20)
 	for _, post := range postData {
 		fmt.Println("postData")
 		if post.Post.Data.Children == nil {
@@ -43,12 +43,14 @@ func ConcurrentlyWalkPostsAndRate(subreddit string) error {
 			continue
 		}
 		time.Sleep(time.Millisecond * 200)
+		tokens <- struct{}{}
 		go func() {
 			err := walkPostAndRate(subreddit, post, minScore, &waitGroup)
 			if err != nil {
-				//panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
+				panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
 			}
 		}()
+		<-tokens
 	}
 	fmt.Println("waiting")
 	waitGroup.Wait()

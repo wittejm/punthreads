@@ -88,16 +88,20 @@ func GatherPostIds(subreddit string, period string) ([]string, error) {
 func ConcurrentlyFetchPosts(subreddit string, postIds []string) {
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(len(postIds))
+	var tokens = make(chan struct{}, 2)
 
 	for i, postId := range postIds {
 		fmt.Println("Fetching post:", i, postId)
 		time.Sleep(time.Millisecond * 100)
+		tokens <- struct{}{}
 		go func() {
 			_, err := LoadOrFetchPost(subreddit, postId, "", 0, &waitGroup)
 			if err != nil {
 				//panic(err) // in a multithreaded environment, let's failfast and kill everything while we are debugging errors.
 			}
 		}()
+		<-tokens
+
 	}
 	waitGroup.Wait()
 }

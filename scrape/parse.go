@@ -137,7 +137,7 @@ func fileExists(name string) (bool, error) {
 func loadOrFetchSubreddit(subreddit string, order string, pageNum int, after string) (*SubredditContent, error) {
 
 	v := url.Values{}
-	v.Add("limit", "5")
+	v.Add("limit", "20")
 	if order != "" {
 		v.Add("t", order)
 	}
@@ -174,28 +174,26 @@ func loadOrFetchSubreddit(subreddit string, order string, pageNum int, after str
 		}
 		defer res.Body.Close()
 
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-
 		f, err := os.Create(filename)
 		if err != nil {
 			return nil, err
 		}
+		defer f.Close()
 
-		n3, err := f.Write(body)
+		defer res.Body.Close()
+		val, err := io.Copy(f, res.Body)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("wrote %d bytes\n", n3)
+
+		fmt.Printf("wrote %d bytes\n", val)
 	}
 	body, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 	var data SubredditContent
-	err = json.Unmarshal(body, &data)
+	json.Unmarshal(body, &data) // eat the error here. This currently generates an error on incoming data because "replies" will be an empty string instead of a comment tree if there are no replies. The unmarshaller then just leaves the field as a zero value (no children). This runs as expected.
 
 	return &data, nil
 }
@@ -222,6 +220,7 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int, 
 		fmt.Println(res.Status)
 		if res.StatusCode != 200 {
 			err = fmt.Errorf("bad status: %s", res.Status)
+			return nil, err
 		}
 		defer res.Body.Close()
 
@@ -247,7 +246,7 @@ func LoadOrFetchPost(subreddit string, postId string, order string, offset int, 
 
 	var data PostAndCommentsContent
 
-	err = json.Unmarshal(body, &data)
+	json.Unmarshal(body, &data) // Eat the error, as above in the load Subreddit code.
 	return &data, nil
 }
 
